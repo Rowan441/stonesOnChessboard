@@ -1,0 +1,9 @@
+.flexbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+canvas#infinite-board {
+    border:1px solid #000000;
+}

@@ -95,6 +95,7 @@ export default class Board {
     this.startButton = new Button("Start Game")
     this.startButton.color = "lightpink"
     this.startButton.pressedColor = "pink"
+    this.startButton.textColor = "DarkSlateGray"
     this.startButton.visible = true
     
     this.undoButton = new Button("Undo Move")

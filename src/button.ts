@@ -9,6 +9,7 @@ export default class Button {
 
   public color: string = "slateblue"
   public pressedColor: string = "mediumslateblue"
+  public textColor: string = "lightgray"
 
   public isPressed: boolean = false;
 
@@ -35,7 +36,7 @@ export default class Button {
     if (!this.visible) return;
     p5.fill(this.isPressed ? this.pressedColor : this.color)
     p5.rect(this.x, this.y, this.width, this.height, 5);
-    p5.fill("lightgray")
+    p5.fill(this.textColor)
     p5.textFont('Verdana', 18);
     p5.textAlign("center", "center")
     p5.text(this.text, this.x, this.y, this.width, this.height)

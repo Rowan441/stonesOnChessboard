@@ -1,5 +1,5 @@
 import p5 from "p5";
-import P5 from "p5"
+import Button from "./button";
 
 
 export interface ZoomConfig {
@@ -56,16 +56,13 @@ export default class Board {
   private panMouseStartY: number | null = null;
 
   private tiles: TileDictionary;
-  //button Pressed state
-  startGameButtonPressed = false;
-  resetGameButtonPressed = false;
+  buttons: Button[];
+  resetButton: Button;
+  startGameButton: Button;
+  isFirstDraw: boolean;
 
   constructor(private p5: p5) {
     this.setupGame()
-  }
-
-  private insideBox(x: number, y: number, x2: number, y2: number, width: number, height: number) {
-    return (x2 < x && x < x2 + width && y2 < y && y < y2 + height)
   }
 
   mouseScrolled(event: WheelEvent) {
@@ -91,46 +88,70 @@ export default class Board {
   }
 
   private setupGame() {
-    this.startGameButtonPressed = false;
-    this.resetGameButtonPressed = false;
-
     this.tileWidth = (this.ZOOM_SETTINGS.MAX_TILE_WIDTH + this.ZOOM_SETTINGS.MIN_TILE_WIDTH)/2
     this.zoomLevel = this.ZOOM_SETTINGS.ZOOM_STEPS/2
     this.x = 0
     this.y = 0
 
+    this.isFirstDraw = true
+
     this.gameState = GameStates.SETUP
     this.currentValue = 1;
+
+    this.resetButton = new Button("Reset Game")
+    this.resetButton.color = "slateblue"
+    this.resetButton.pressedColor = "mediumslateblue"
+    this.resetButton.visible = true;
+
+    this.startGameButton = new Button("Start Game")
+    this.startGameButton.color = "lightpink"
+    this.startGameButton.pressedColor = "pink"
+    this.startGameButton.visible = true
+    this.setButtonSizes()
+
+    this.buttons = [
+      this.resetButton,
+      this.startGameButton
+    ]
 
     this.tiles = {};
   }
 
+  private setButtonSizes() {
+    this.resetButton.setSize(15, 15, 150, 40)
+    this.startGameButton.setSize(15, this.p5.height*0.92, 150, 40)
+  }
+
+  windowResized() {
+    this.setButtonSizes()
+  }
+
   mouseReleased(mouseX: number, mouseY: number) {
-    if (this.gameState === GameStates.SETUP && this.startGameButtonPressed) {
-      this.startGameButtonPressed = false;
-      if (this.insideBox(mouseX, mouseY, 15, this.p5.height*0.92, 150, 40)) {
+    if (this.startGameButton.isPressed) {
+      this.startGameButton.isPressed = false;
+      if (this.startGameButton.checkPressed(mouseX, mouseY)) {
         this.gameState = GameStates.PLACING;
         this.currentValue = 2;
+        this.startGameButton.visible = false;
       }
       return
-    } else if (this.gameState === GameStates.PLACING && this.resetGameButtonPressed) {
-      this.resetGameButtonPressed = false;
-      if (this.insideBox(mouseX, mouseY, 15, 15, 150, 40)) {
+    } else if (this.resetButton.isPressed) {
+      this.resetButton.isPressed = false;
+      if (this.resetButton.checkPressed(mouseX, mouseY)) {
         this.setupGame()
-        return
       }
+      return
     }
     if (!this.panning) {
       const colSelected = Math.floor((mouseX-this.x)/this.tileWidth);
       const rowSelected = Math.floor((mouseY-this.y)/this.tileWidth);
       
       if(this.tiles[`${colSelected} ${rowSelected}`]) {
-        //Tile Here
+        // Tile Here
         // const tile = this.tiles[`${colSelected} ${rowSelected}`]
       } else {
         // Empty spot
         if(this.gameState === GameStates.PLACING){
-          debugger
           if (this.legalPlacement(colSelected, rowSelected)){
             this.tiles[`${colSelected} ${rowSelected}`] = this.currentValue
             this.currentValue++;
@@ -145,20 +166,15 @@ export default class Board {
   }
 
   mousePressed(mouseX: number, mouseY: number) {
-    if (this.gameState === GameStates.SETUP) {
-      if (this.insideBox(mouseX, mouseY, 15, this.p5.height*0.92, 150, 40)) {
-        this.startGameButtonPressed = true;
+    this.buttons.forEach((button) => {
+      if(button.visible && button.checkPressed(mouseX, mouseY)){
+        button.isPressed = true
       }
-    }
-    if (this.gameState === GameStates.PLACING) {
-      if (this.insideBox(mouseX, mouseY, 15, 15, 150, 40)) {
-        this.resetGameButtonPressed = true;
-      }
-    }
+    })
   }
 
   mouseDragged(mouseX: number, mouseY: number) {
-    if (this.startGameButtonPressed || this.resetGameButtonPressed) {
+    if (this.buttons.some((button) => button.isPressed)) {
       return
     }
     if (!this.panning) {
@@ -174,6 +190,9 @@ export default class Board {
   }
 
   draw() {
+    if(this.isFirstDraw)this.setButtonSizes();
+
+
     //Drawing Board
     this.p5.textFont('Verdana', this.tileWidth*0.8);
     this.p5.textAlign("center", 'center')
@@ -201,21 +220,7 @@ export default class Board {
       }
     }
 
-    // Drawing Buttons
-    if (this.gameState === GameStates.SETUP) {
-      this.p5.fill(this.startGameButtonPressed ? "pink" : "lightpink")
-      this.p5.rect(15, this.p5.height*0.92, 150, 40, 5);
-      this.p5.fill("black")
-      this.p5.textFont('Verdana', 18);
-      this.p5.textAlign("center", "center")
-      this.p5.text("Start Game", 15, this.p5.height*0.92, 150, 40)
-    } else  if (this.gameState == GameStates.PLACING) {
-      this.p5.fill(this.resetGameButtonPressed ? "mediumslateblue" : "slateblue")
-      this.p5.rect(15, 15, 150, 40, 5);
-      this.p5.fill("lightgray")
-      this.p5.textFont('Verdana', 18);
-      this.p5.textAlign("center", "center")
-      this.p5.text("Reset Game", 15, 15, 150, 40) 
-    }
+    // Drawing buttons
+    this.buttons.forEach((button) => {button.draw(this.p5)})
   }
 }

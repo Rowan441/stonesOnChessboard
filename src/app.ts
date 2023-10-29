@@ -14,6 +14,7 @@ const sketch = (p5: P5) => {
   };
 
   p5.windowResized = (): void => {
+    board.windowResized();
     p5.resizeCanvas(window.innerWidth, window.innerHeight);
     p5.redraw()
   }

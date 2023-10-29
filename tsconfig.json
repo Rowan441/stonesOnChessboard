@@ -10,6 +10,7 @@
         "dom"
       ],
       "noImplicitAny": true,
+      "strictPropertyInitialization": false,
       "rootDir": "src",
       "moduleResolution": "node"
     }

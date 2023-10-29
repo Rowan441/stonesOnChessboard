@@ -56,13 +56,70 @@ export default class Board {
   private panMouseStartY: number | null = null;
 
   private tiles: TileDictionary;
+  private moveHistoryQueue: Array<{row: number, col: number, value: number}>;
+
   buttons: Button[];
   resetButton: Button;
-  startGameButton: Button;
+  startButton: Button;
+  undoButton: Button;
+
   isFirstDraw: boolean;
 
   constructor(private p5: p5) {
     this.setupGame()
+  }
+
+  private setupGame() {
+    this.tileWidth = (this.ZOOM_SETTINGS.MAX_TILE_WIDTH + this.ZOOM_SETTINGS.MIN_TILE_WIDTH)/2
+    this.zoomLevel = this.ZOOM_SETTINGS.ZOOM_STEPS/2
+    this.x = 0
+    this.y = 0
+
+    this.isFirstDraw = true
+
+    this.gameState = GameStates.SETUP
+    this.currentValue = 1;
+
+    this.resetButton = new Button("Reset Game")
+    this.resetButton.color = "slateblue"
+    this.resetButton.pressedColor = "mediumslateblue"
+    this.resetButton.visible = true;
+
+    this.startButton = new Button("Start Game")
+    this.startButton.color = "lightpink"
+    this.startButton.pressedColor = "pink"
+    this.startButton.visible = true
+    
+    this.undoButton = new Button("Undo Move")
+    this.undoButton.color = "lightgreen";
+    this.undoButton.color = "green";
+    this.undoButton.visible = false;
+    this.undoButton.onClick = (() => {
+      const prevMove = this.moveHistoryQueue.pop()
+      this.tiles[`${prevMove?.col} ${prevMove?.row}`] = undefined
+      if(prevMove?.value === 2 || this.moveHistoryQueue.length === 0) {
+        this.undoButton.visible = false
+      }
+      //'this'
+      this.currentValue = this.gameState === GameStates.SETUP ? 1 : this.currentValue-1
+    }).bind(this)
+    
+    this.setButtonSizes()
+
+    this.buttons = [
+      this.resetButton,
+      this.startButton,
+      this.undoButton
+    ]
+
+    this.tiles = {};
+    this.moveHistoryQueue = []
+  }
+
+  private setButtonSizes() {
+    this.resetButton.setSize(15, 15, 150, 40)
+    this.startButton.setSize(15, this.p5.height*0.92, 150, 40)
+    this.undoButton.setSize(this.p5.width*0.8, 15, 150, 40)
   }
 
   mouseScrolled(event: WheelEvent) {
@@ -84,61 +141,33 @@ export default class Board {
     const neighbourSum =  NEIGHBOURS.reduce((sum, pos) => {
       return sum + (this.tiles[`${col+pos[0]} ${row+pos[1]}`] || 0)
     }, 0) 
-    return neighbourSum=== this.currentValue
+    return neighbourSum === this.currentValue
   }
 
-  private setupGame() {
-    this.tileWidth = (this.ZOOM_SETTINGS.MAX_TILE_WIDTH + this.ZOOM_SETTINGS.MIN_TILE_WIDTH)/2
-    this.zoomLevel = this.ZOOM_SETTINGS.ZOOM_STEPS/2
-    this.x = 0
-    this.y = 0
-
-    this.isFirstDraw = true
-
-    this.gameState = GameStates.SETUP
-    this.currentValue = 1;
-
-    this.resetButton = new Button("Reset Game")
-    this.resetButton.color = "slateblue"
-    this.resetButton.pressedColor = "mediumslateblue"
-    this.resetButton.visible = true;
-
-    this.startGameButton = new Button("Start Game")
-    this.startGameButton.color = "lightpink"
-    this.startGameButton.pressedColor = "pink"
-    this.startGameButton.visible = true
-    this.setButtonSizes()
-
-    this.buttons = [
-      this.resetButton,
-      this.startGameButton
-    ]
-
-    this.tiles = {};
-  }
-
-  private setButtonSizes() {
-    this.resetButton.setSize(15, 15, 150, 40)
-    this.startGameButton.setSize(15, this.p5.height*0.92, 150, 40)
-  }
 
   windowResized() {
     this.setButtonSizes()
   }
 
   mouseReleased(mouseX: number, mouseY: number) {
-    if (this.startGameButton.isPressed) {
-      this.startGameButton.isPressed = false;
-      if (this.startGameButton.checkPressed(mouseX, mouseY)) {
+    if (this.startButton.isPressed) {
+      this.startButton.isPressed = false;
+      if (this.startButton.checkMouseInbounds(mouseX, mouseY)) {
         this.gameState = GameStates.PLACING;
         this.currentValue = 2;
-        this.startGameButton.visible = false;
+        this.startButton.visible = false;
       }
       return
     } else if (this.resetButton.isPressed) {
       this.resetButton.isPressed = false;
-      if (this.resetButton.checkPressed(mouseX, mouseY)) {
+      if (this.resetButton.checkMouseInbounds(mouseX, mouseY)) {
         this.setupGame()
+      }
+      return
+    } else if (this.undoButton.isPressed) {
+      this.undoButton.isPressed = false;
+      if (this.undoButton.checkMouseInbounds(mouseX, mouseY)) {
+        this.undoButton.onClick()
       }
       return
     }
@@ -149,17 +178,23 @@ export default class Board {
       if(this.tiles[`${colSelected} ${rowSelected}`]) {
         // Tile Here
         // const tile = this.tiles[`${colSelected} ${rowSelected}`]
+        debugger
       } else {
         // Empty spot
         if(this.gameState === GameStates.PLACING){
-          if (this.legalPlacement(colSelected, rowSelected)){
-            this.tiles[`${colSelected} ${rowSelected}`] = this.currentValue
-            this.currentValue++;
-            console.log(this.currentValue)
+          if (!this.legalPlacement(colSelected, rowSelected)){
+            //Illegal move
+            return
           }
-        }  else if (this.gameState === GameStates.SETUP) {
-          this.tiles[`${colSelected} ${rowSelected}`] = this.currentValue
         }
+        this.tiles[`${colSelected} ${rowSelected}`] = this.currentValue
+        this.moveHistoryQueue.push({
+          row: rowSelected,
+          col: colSelected,
+          value: this.currentValue,
+        })
+        this.undoButton.visible = true
+        if(this.gameState === GameStates.PLACING) this.currentValue++;
       }
     }
     this.panning = false
@@ -167,7 +202,7 @@ export default class Board {
 
   mousePressed(mouseX: number, mouseY: number) {
     this.buttons.forEach((button) => {
-      if(button.visible && button.checkPressed(mouseX, mouseY)){
+      if(button.visible && button.checkMouseInbounds(mouseX, mouseY)){
         button.isPressed = true
       }
     })

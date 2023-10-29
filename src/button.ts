@@ -13,6 +13,8 @@ export default class Button {
   public isPressed: boolean = false;
 
   public visible: boolean = false;
+  
+  onClick: () => void
 
   constructor(public text: string) {
 
@@ -25,7 +27,7 @@ export default class Button {
     this.height = height;
   }
 
-  public checkPressed(mouseX: number, mouseY: number) {
+  public checkMouseInbounds(mouseX: number, mouseY: number) {
     return (this.x < mouseX && mouseX < this.x + this.width && this.y < mouseY && mouseY < this.y + this.height)
   }
 

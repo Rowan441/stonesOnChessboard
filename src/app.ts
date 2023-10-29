@@ -25,6 +25,7 @@ const sketch = (p5: P5) => {
   }
 
   p5.mouseWheel = (event: WheelEvent) => {
+    event.preventDefault()
     board.mouseScrolled(event)
     p5.redraw()
   }

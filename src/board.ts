@@ -20,7 +20,6 @@ type TileHashMap<T> = {
 enum GameStates {
   SETUP,
   PLACING,
-  RESET,
 }
 
 // prettier-ignore
@@ -28,6 +27,8 @@ const NEIGHBOUR_OFFSETS =
 [[-1, -1], [ 0, -1], [ 1, -1], 
  [-1,  0],           [ 1,  0],
  [-1,  1], [ 0,  1], [ 1,  1]]
+
+const MAXIMUM_SCORES = [1,16,28,38,49,60]
 
 export default class Board {
   ZOOM_SETTINGS: ZoomConfig = {
@@ -71,6 +72,7 @@ export default class Board {
   undoButton: Button;
 
   isFirstDraw: boolean;
+  onesPlaced: number;
 
   constructor(private p5: p5) {
     this.setupGame()
@@ -83,6 +85,7 @@ export default class Board {
     this.y = 0
 
     this.isFirstDraw = true
+    this.onesPlaced = 0
 
     this.gameState = GameStates.SETUP
     this.currentValue = 1;
@@ -108,10 +111,13 @@ export default class Board {
       if(prevMove?.value === 2 || this.moveHistoryQueue.length === 0) {
         this.undoButton.visible = false
       }
-      //'this'
       this.currentValue = this.gameState === GameStates.SETUP ? 1 : this.currentValue-1
-      if(this.gameState === GameStates.PLACING)this.recalculateAllowedMoves();
-    }).bind(this)
+      if(this.gameState === GameStates.PLACING){
+        this.recalculateAllowedMoves();
+      } else {
+        this.onesPlaced--
+      }
+      }).bind(this)
     
     this.setButtonSizes()
 
@@ -229,6 +235,8 @@ export default class Board {
         if(this.gameState === GameStates.PLACING) {
           this.currentValue++;
           this.recalculateAllowedMoves()
+        } else {
+          this.onesPlaced++;
         }
       }
     }
@@ -291,9 +299,24 @@ export default class Board {
           this.p5.text(tileVal.toString(), firstColOffset + this.tileWidth * (col+0.5), firstRowOffset + this.tileWidth * (row+0.55))
         }
       }
-    }
-
+    } 
+    
     // Drawing buttons
     this.buttons.forEach((button) => {button.draw(this.p5)})
+
+    //Drawing score
+    let instructionText = this.gameState === GameStates.SETUP
+      ? "Place your one tiles..."
+      : `Placing ${this.currentValue} tile. Score: ${this.currentValue+1}`
+    this.p5.fill("brown")
+    this.p5.textFont('Verdana', 22);
+    this.p5.textAlign("left", 'center')
+    this.p5.text(instructionText, 180, 11, 300, 50)
+
+    if(this.gameState == GameStates.PLACING && MAXIMUM_SCORES[this.onesPlaced-1]) {
+      const maxScoreText = `Maximum score with ${this.onesPlaced} one tiles: ${MAXIMUM_SCORES[this.onesPlaced-1]}`
+      this.p5.textFont('Verdana', 16);
+      this.p5.text(maxScoreText, 180, 45, 300, 50)
+    }
   }
 }

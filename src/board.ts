@@ -13,8 +13,8 @@ export interface TextColorsConfig {
   MAX_VALUE: number;
 }
 
-type TileDictionary = {
-  [key: string]: number | undefined
+type TileHashMap<T> = {
+  [key: string]: T | undefined
 }
 
 enum GameStates {
@@ -22,6 +22,12 @@ enum GameStates {
   PLACING,
   RESET,
 }
+
+// prettier-ignore
+const NEIGHBOUR_OFFSETS =
+[[-1, -1], [ 0, -1], [ 1, -1], 
+ [-1,  0],           [ 1,  0],
+ [-1,  1], [ 0,  1], [ 1,  1]]
 
 export default class Board {
   ZOOM_SETTINGS: ZoomConfig = {
@@ -55,7 +61,8 @@ export default class Board {
   private panMouseStartX: number | null = null;
   private panMouseStartY: number | null = null;
 
-  private tiles: TileDictionary;
+  private tiles: TileHashMap<number>;
+  private allowedMoves: TileHashMap<boolean>
   private moveHistoryQueue: Array<{row: number, col: number, value: number}>;
 
   buttons: Button[];
@@ -102,6 +109,7 @@ export default class Board {
       }
       //'this'
       this.currentValue = this.gameState === GameStates.SETUP ? 1 : this.currentValue-1
+      if(this.gameState === GameStates.PLACING)this.recalculateAllowedMoves();
     }).bind(this)
     
     this.setButtonSizes()
@@ -113,6 +121,7 @@ export default class Board {
     ]
 
     this.tiles = {};
+    this.allowedMoves = {}
     this.moveHistoryQueue = []
   }
 
@@ -131,14 +140,35 @@ export default class Board {
     }
   }
 
-  private legalPlacement(col: number, row: number) {
-    // prettier-ignore
-    const NEIGHBOURS =
-    [[-1, -1], [ 0, -1], [ 1, -1], 
-     [-1,  0],           [ 1,  0],
-     [-1,  1], [ 0,  1], [ 1,  1]]
+  private recalculateAllowedMoves() {
+    // TODO could be optimized
+    // (only recalculate the sum for the newest tile and save the emptySpaceSums for entire game)
+    // don't forget undo moves though...
+    debugger
+    const emptySpaceSums: TileHashMap<number> = {}
+    this.allowedMoves = {}
+    for (const locationString in this.tiles) {
+      const tileValue = this.tiles[locationString]!
+      if(tileValue === undefined) continue;
+      const [col, row] = locationString.split(" ").map(Number)
 
-    const neighbourSum =  NEIGHBOURS.reduce((sum, pos) => {
+      NEIGHBOUR_OFFSETS.forEach((pos) => {
+        const value = this.tiles[`${col+pos[0]} ${row+pos[1]}`]
+        if (value === undefined) {
+          emptySpaceSums[`${col+pos[0]} ${row+pos[1]}`] ||= 0
+          emptySpaceSums[`${col+pos[0]} ${row+pos[1]}`]! += tileValue
+        }
+      });
+    }
+    for (const locationString in emptySpaceSums) {
+      if (emptySpaceSums[locationString] === this.currentValue) {
+        this.allowedMoves[locationString] = true
+      }
+    }
+  }
+
+  private legalPlacement(col: number, row: number) {
+    const neighbourSum =  NEIGHBOUR_OFFSETS.reduce((sum, pos) => {
       return sum + (this.tiles[`${col+pos[0]} ${row+pos[1]}`] || 0)
     }, 0) 
     return neighbourSum === this.currentValue
@@ -155,6 +185,7 @@ export default class Board {
       if (this.startButton.checkMouseInbounds(mouseX, mouseY)) {
         this.gameState = GameStates.PLACING;
         this.currentValue = 2;
+        this.recalculateAllowedMoves()
         this.startButton.visible = false;
       }
       return
@@ -176,7 +207,7 @@ export default class Board {
       const rowSelected = Math.floor((mouseY-this.y)/this.tileWidth);
       
       if(this.tiles[`${colSelected} ${rowSelected}`]) {
-        // Tile Here
+        // number already placed on tile
         // const tile = this.tiles[`${colSelected} ${rowSelected}`]
         debugger
       } else {
@@ -194,7 +225,10 @@ export default class Board {
           value: this.currentValue,
         })
         this.undoButton.visible = true
-        if(this.gameState === GameStates.PLACING) this.currentValue++;
+        if(this.gameState === GameStates.PLACING) {
+          this.currentValue++;
+          this.recalculateAllowedMoves()
+        }
       }
     }
     this.panning = false
@@ -244,6 +278,9 @@ export default class Board {
         const tileVal = this.tiles[`${firstCol+col} ${firstRow+row}`]
         this.p5.fill("white")
         this.p5.square(firstColOffset + this.tileWidth * col, firstRowOffset + this.tileWidth * row, this.tileWidth)
+        if (this.allowedMoves[`${firstCol+col} ${firstRow+row}`]) {
+          this.p5.circle(firstColOffset + this.tileWidth * (col+0.5), firstRowOffset + this.tileWidth * (row+0.5), this.tileWidth*0.3)
+        }
         if (tileVal) {
           if (tileVal === 1) {
             this.p5.fill("darkgray");

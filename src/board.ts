@@ -151,7 +151,6 @@ export default class Board {
     // TODO could be optimized
     // (only recalculate the sum for the newest tile and save the emptySpaceSums for entire game)
     // don't forget undo moves though...
-    debugger
     const emptySpaceSums: TileHashMap<number> = {}
     this.allowedMoves = {}
     for (const locationString in this.tiles) {
@@ -209,14 +208,14 @@ export default class Board {
       }
       return
     }
-    if (!this.panning) {
+    const pannedDist = Math.hypot(mouseX - this.panMouseStartX!, mouseY - this.panMouseStartY!)
+    if (pannedDist < 3 || !this.panning) {
       const colSelected = Math.floor((mouseX-this.x)/this.tileWidth);
       const rowSelected = Math.floor((mouseY-this.y)/this.tileWidth);
       
       if(this.tiles[`${colSelected} ${rowSelected}`]) {
         // number already placed on tile
         // const tile = this.tiles[`${colSelected} ${rowSelected}`]
-        debugger
       } else {
         // Empty spot
         if(this.gameState === GameStates.PLACING){

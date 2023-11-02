@@ -46,3 +46,17 @@ Then run the project locally:
 ```
 npm run start
 ```
+
+## Deployment
+
+To push new update from master to gh-pages first build the webapp:
+
+```
+npm build
+```
+
+Then push the built files to `deployment-branch`:
+
+```
+npx push-dir --dir=dist --branch=deployment-branch
+```

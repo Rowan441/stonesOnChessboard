@@ -52,7 +52,7 @@ npm run start
 To push new update from master to gh-pages first build the webapp:
 
 ```
-npm build
+npm run build
 ```
 
 Then push the built files to `deployment-branch`:

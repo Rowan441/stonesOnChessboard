@@ -215,7 +215,7 @@ export default class Board {
       return
     } else if (this.helpButton.isPressed) {
       this.helpButton.isPressed = false;
-      window.open('/help.html', '_blank')
+      window.open('/stonesOnChessboard/help.html', '_blank')
       return
     } else if (this.undoButton.isPressed) {
       this.undoButton.isPressed = false;

@@ -53,7 +53,7 @@ To push new update from master to gh-pages first build the webapp:
 
 ```bash
 # remove old dist directory
-# rm -rf dist
+# rm -rf dist/*
 
 # push new build to dist directory
 npm run build

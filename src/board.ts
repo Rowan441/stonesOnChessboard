@@ -335,7 +335,6 @@ export default class Board {
         instructionText = `Game Over! Score: ${this.currentValue-1} tiles`
         break;
     }
-    console.log(instructionText)
     this.p5.fill("brown")
     this.p5.textFont('Verdana', 24);
     this.p5.textAlign("left", 'center')

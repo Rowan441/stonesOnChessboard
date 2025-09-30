@@ -20,6 +20,7 @@ type TileHashMap<T> = {
 enum GameStates {
   SETUP,
   PLACING,
+  NO_MOVES
 }
 
 // prettier-ignore
@@ -68,6 +69,7 @@ export default class Board {
 
   buttons: Button[];
   resetButton: Button;
+  helpButton: Button;
   startButton: Button;
   undoButton: Button;
 
@@ -95,6 +97,12 @@ export default class Board {
     this.resetButton.pressedColor = "mediumslateblue"
     this.resetButton.visible = true;
 
+    this.helpButton = new Button("Help")
+    this.helpButton.color = "darkorange"
+    this.helpButton.pressedColor = "sandybrown"
+    this.helpButton.textColor = "white"
+    this.helpButton.visible = true;
+
     this.startButton = new Button("Start Game")
     this.startButton.color = "lightpink"
     this.startButton.pressedColor = "pink"
@@ -112,7 +120,8 @@ export default class Board {
         this.undoButton.visible = false
       }
       this.currentValue = this.gameState === GameStates.SETUP ? 1 : this.currentValue-1
-      if(this.gameState === GameStates.PLACING){
+      if(this.gameState !== GameStates.SETUP){
+        this.gameState = GameStates.PLACING
         this.recalculateAllowedMoves();
       } else {
         this.onesPlaced--
@@ -123,6 +132,7 @@ export default class Board {
 
     this.buttons = [
       this.resetButton,
+      this.helpButton,
       this.startButton,
       this.undoButton
     ]
@@ -134,6 +144,7 @@ export default class Board {
 
   private setButtonSizes() {
     this.resetButton.setSize(15, 15, 150, 40)
+    this.helpButton.setSize(15, 15+40+15, 150, 40)
     this.startButton.setSize(15, this.p5.height*0.92, 150, 40)
     this.undoButton.setSize(this.p5.width*0.8, 15, 150, 40)
   }
@@ -147,7 +158,7 @@ export default class Board {
     }
   }
 
-  private recalculateAllowedMoves() {
+  private recalculateAllowedMoves(): number {
     // TODO could be optimized
     // (only recalculate the sum for the newest tile and save the emptySpaceSums for entire game)
     // don't forget undo moves though...
@@ -171,6 +182,7 @@ export default class Board {
         this.allowedMoves[locationString] = true
       }
     }
+    return Object.keys(this.allowedMoves).length
   }
 
   private legalPlacement(col: number, row: number) {
@@ -189,9 +201,9 @@ export default class Board {
     if (this.startButton.isPressed) {
       this.startButton.isPressed = false;
       if (this.startButton.checkMouseInbounds(mouseX, mouseY)) {
-        this.gameState = GameStates.PLACING;
         this.currentValue = 2;
-        this.recalculateAllowedMoves()
+        const legalMoves = this.recalculateAllowedMoves()
+        this.gameState = legalMoves === 0 ? GameStates.NO_MOVES : GameStates.PLACING;
         this.startButton.visible = false;
       }
       return
@@ -200,6 +212,10 @@ export default class Board {
       if (this.resetButton.checkMouseInbounds(mouseX, mouseY)) {
         this.setupGame()
       }
+      return
+    } else if (this.helpButton.isPressed) {
+      this.helpButton.isPressed = false;
+      window.open('/help.html', '_blank')
       return
     } else if (this.undoButton.isPressed) {
       this.undoButton.isPressed = false;
@@ -218,7 +234,7 @@ export default class Board {
         // const tile = this.tiles[`${colSelected} ${rowSelected}`]
       } else {
         // Empty spot
-        if(this.gameState === GameStates.PLACING){
+        if(this.gameState !== GameStates.SETUP){
           if (!this.legalPlacement(colSelected, rowSelected)){
             //Illegal move
             return
@@ -233,7 +249,10 @@ export default class Board {
         this.undoButton.visible = true
         if(this.gameState === GameStates.PLACING) {
           this.currentValue++;
-          this.recalculateAllowedMoves()
+          const legalMoves = this.recalculateAllowedMoves()
+          if (legalMoves === 0) {
+            this.gameState = GameStates.NO_MOVES
+          }
         } else {
           this.onesPlaced++;
         }
@@ -304,18 +323,28 @@ export default class Board {
     this.buttons.forEach((button) => {button.draw(this.p5)})
 
     //Drawing score
-    let instructionText = this.gameState === GameStates.SETUP
-      ? "Place your one tiles..."
-      : `Placing ${this.currentValue} tile. Score: ${this.currentValue-1}`
+    let instructionText: string;
+    switch(this.gameState) {
+      case GameStates.SETUP:
+        instructionText = "Place your ones tiles..."
+        break;
+      case GameStates.PLACING:
+        instructionText = `Placing ${this.currentValue} tile.`
+        break;
+      case GameStates.NO_MOVES:
+        instructionText = `Game Over! Score: ${this.currentValue-1} tiles`
+        break;
+    }
+    console.log(instructionText)
     this.p5.fill("brown")
-    this.p5.textFont('Verdana', 22);
+    this.p5.textFont('Verdana', 24);
     this.p5.textAlign("left", 'center')
-    this.p5.text(instructionText, 180, 11, 300, 50)
+    this.p5.text(instructionText, 180, 35)
 
-    if(this.gameState == GameStates.PLACING && MAXIMUM_SCORES[this.onesPlaced-1]) {
-      const maxScoreText = `Maximum score with ${this.onesPlaced} one tiles: ${MAXIMUM_SCORES[this.onesPlaced-1]}`
+    if(this.gameState != GameStates.SETUP && MAXIMUM_SCORES[this.onesPlaced-1]) {
+      const maxScoreText = `Maximum score with ${this.onesPlaced} initial ones tiles: ${MAXIMUM_SCORES[this.onesPlaced-1]}`
       this.p5.textFont('Verdana', 16);
-      this.p5.text(maxScoreText, 180, 45, 300, 50)
+      this.p5.text(maxScoreText, 180, 75)
     }
   }
 }

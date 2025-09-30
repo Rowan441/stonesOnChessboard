@@ -39,11 +39,11 @@ This project was created with `typescript`, `p5.js` and built / deployed with `p
 ## Development
 
 To run the project first install the dependencies
-```
+```bash
 npm install
 ```
 Then run the project locally:
-```
+```bash
 npm run start
 ```
 
@@ -51,12 +51,16 @@ npm run start
 
 To push new update from master to gh-pages first build the webapp:
 
-```
+```bash
+# remove old dist directory
+# rm -rf dist
+
+# push new build to dist directory
 npm run build
 ```
 
 Then push the built files to `deployment-branch`:
 
-```
+```bash
 npx push-dir --dir=dist --branch=deployment-branch
 ```
